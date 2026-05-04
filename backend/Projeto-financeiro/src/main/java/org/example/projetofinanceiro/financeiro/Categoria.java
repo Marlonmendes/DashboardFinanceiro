@@ -8,7 +8,8 @@ public enum Categoria {
     LAZER("Lazer"),
     MORADIA("Moradia"),
     UTILIDADES("Utilidades"),
-    OUTROS("Outros");
+    OUTROS("Outros"),
+    RECEITA("Receita");
 
     private final String descricao;
 

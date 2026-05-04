@@ -1,0 +1,2 @@
+ALTER TABLE usuario
+    ADD COLUMN salary NUMERIC(10,2) DEFAULT 0.00;

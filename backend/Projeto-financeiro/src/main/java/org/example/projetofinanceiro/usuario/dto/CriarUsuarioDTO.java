@@ -6,6 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.util.Optional;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,4 +24,6 @@ public class CriarUsuarioDTO {
 
     @NotNull(message = "Email não pode estar vazio")
     private String email;
+
+    private BigDecimal salary;
 }

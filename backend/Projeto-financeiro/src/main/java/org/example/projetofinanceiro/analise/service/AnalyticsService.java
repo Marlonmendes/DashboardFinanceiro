@@ -39,16 +39,15 @@ public class AnalyticsService {
         DashboardDTO dashboardDTO = new DashboardDTO();
 
         dashboardDTO.setTotalMensal(getTotalMes(usuarioId, hoje.getYear(), hoje.getMonthValue()));
+        dashboardDTO.setQtdDinheiroEntrada(getTotalMesIncome(usuarioId, hoje.getYear(), hoje.getMonthValue()));
+
         dashboardDTO.setMaiorCategoria(getMaiorCategoria(usuarioId, inicioMes, fimMes));
-        dashboardDTO.setEconomiaTotal(calcularEconomiaTotal(usuarioId));
 
         dashboardDTO.setPorCategoria(getTotalPorCategoria(usuarioId, inicioMes, fimMes));
 
-        dashboardDTO.setTendenciaMensal(getTendenciaMensal(usuarioId, hoje.getYear()));
+        dashboardDTO.setPorMes(getTendenciaMensal(usuarioId, hoje.getYear()));
 
         dashboardDTO.setGastoNecessario(getGastoNecessario(usuarioId, inicioMes, fimMes));
-
-        dashboardDTO.setPrevisaoProximos30Dias(fazerPrevisao(usuarioId, 30));
 
         dashboardDTO.setRecomendacoes(gerarRecomendacoes(usuarioId));
 
@@ -56,7 +55,12 @@ public class AnalyticsService {
     }
 
     public BigDecimal getTotalMes(Long usuarioId, int ano, int mes){
-        BigDecimal total = analyticsRepository.getTotalMes(usuarioId, ano, mes);
+        BigDecimal total = analyticsRepository.getTotalMesOutcome(usuarioId, ano, mes);
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getTotalMesIncome(Long usuarioId, int ano, int mes){
+        BigDecimal total = analyticsRepository.getTotalMesIncome(usuarioId, ano, mes);
         return total != null ? total : BigDecimal.ZERO;
     }
 
@@ -144,15 +148,18 @@ public class AnalyticsService {
         List<Object[]> resultados = analyticsRepository.getTendenciaMensal(usuarioId, ano);
 
         String[] nomeMeses = {
-                "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+                "", "Jan", "Fev", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dez"
         };
 
         return resultados.stream()
                 .map(row -> {
                     Integer mes = ((Number) row[0]).intValue();
-                    BigDecimal total = (BigDecimal) row[1];
-                    Long quantidade = (Long) row[2];
+                    BigDecimal totalEntrada = (BigDecimal) row[1];
+                    BigDecimal totalSaida = (BigDecimal) row[2];
+                    Long quantidade = (Long) row[3];
+
+                    BigDecimal total = totalEntrada.subtract(totalSaida);
 
                     //Calcular media diaria
                     YearMonth ym = YearMonth.of(ano,mes);
@@ -166,7 +173,8 @@ public class AnalyticsService {
                     return new TendenciaMensal(
                             mes,
                             nomeMeses[mes],
-                            total,
+                            totalEntrada,
+                            totalSaida,
                             quantidade.intValue(),
                             mediaDiaria
                     );

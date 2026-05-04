@@ -55,7 +55,8 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
      */
     @Query(value = """
         SELECT EXTRACT(MONTH FROM (f.data)) as mes,
-               SUM(f.valor) as total,
+			   SUM(case when recdesp = -1 then f.valor else 0 end) as totalSaida,
+			   SUM(case when recdesp = 1 then f.valor else 0 end) as totalEntrada,
                COUNT(*) as quantidade
         FROM Financeiro f
         WHERE f.usuario_id = :usuarioId
@@ -143,7 +144,7 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
     );
 
     /**
-     * Total do mês atual
+     * Total do mês atual que saiu
      */
     @Query(value = """
         SELECT SUM(f.valor)
@@ -151,12 +152,36 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
         WHERE f.usuario_id = :usuarioId
         AND EXTRACT(YEAR FROM f.data) = :ano
         AND EXTRACT(MONTH FROM f.data) = :mes
+        AND RECDESP = -1
     """, nativeQuery = true)
-    BigDecimal getTotalMes(
+    BigDecimal getTotalMesOutcome(
             @Param("usuarioId") Long usuarioId,
             @Param("ano") int ano,
             @Param("mes") int mes
     );
+
+    /**
+     * Total do mês atual que saiu
+     */
+    @Query(value = """
+        SELECT COALESCE(SUM(f.valor), 0) +
+                   (
+                           SELECT COALESCE(salary, 0)
+                           FROM usuario
+                           WHERE id = 1
+                       ) AS total_receita
+        FROM Financeiro f
+        WHERE f.usuario_id = :usuarioId
+        AND EXTRACT(YEAR FROM f.data) = :ano
+        AND EXTRACT(MONTH FROM f.data) = :mes
+        AND RECDESP = 1;
+    """, nativeQuery = true)
+    BigDecimal getTotalMesIncome(
+            @Param("usuarioId") Long usuarioId,
+            @Param("ano") int ano,
+            @Param("mes") int mes
+    );
+
 
     /**
      * Categoria com maior gasto

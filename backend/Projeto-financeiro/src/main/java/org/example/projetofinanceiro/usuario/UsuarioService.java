@@ -38,6 +38,7 @@ public class UsuarioService {
         usuario.setNome(dto.getNome());
         usuario.setSenha(dto.getSenha());
         usuario.setEmail(dto.getEmail());
+        usuario.setSalary(dto.getSalary());
 
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
         log.info("Usuário criado com sucesso. ID: {}", usuarioSalvo.getId());

@@ -12,12 +12,10 @@ import java.util.List;
 @AllArgsConstructor
 public class DashboardDTO {
     private BigDecimal totalMensal;
+    private BigDecimal qtdDinheiroEntrada;
     private String maiorCategoria;
-    private BigDecimal economiaTotal;
     private List<CategoriaTotal> porCategoria;
-    private List<TendenciaMensal> tendenciaMensal;
+    private List<TendenciaMensal> porMes;
     private List<GastoNecessario> gastoNecessario;
-    private List<GastoVsReceita> gastoVsReceita;
-    private BigDecimal previsaoProximos30Dias;
     private List<RecomendacaoDTO> recomendacoes;
 }
