@@ -1,22 +1,24 @@
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import {TrendingUp, TrendingDown, AlertCircle, Award, Target, Zap} from "lucide-react";
+import "flatpickr/dist/themes/material_blue.css";
+import DateRangePicker from "./DateRangerPicker";
 
 const DashboardFinanceiro = () => {
     const [usuarioId] = useState(1); //Substituir por ID real
     const [dashboard, setDashboard] = useState(null);
     const [tendencias, setTendencias] = useState(null);
-    const [categorias, setCategorias] = useState();
+    const [categorias, setCategorias] = useState([]);
     const [recomendacoes, setRecomendacoes] = useState(null);
     const [score, setScore] = useState(null);
-    const [loading, setLoading] = useState(null);
+    const [loading, setLoading] = useState(false);
     const [transacoes, setTransacoes] = useState([]);
     const [aba, setAba] = useState('visao-geral');
-    const [dataFiltro, setDataFiltro] = useState("");
+    const [dataFiltro, setDataFiltro] = useState(null);
     const [categoriaFiltro, setCategoriaFiltro] = useState("");
     const [darkMode, setDarkMode] = useState(false);
     const [modalAberto, setModalAberto] = useState(false);
@@ -27,7 +29,17 @@ const DashboardFinanceiro = () => {
     const [transacaoEditando, setTransacaoEditando] = useState(null);
     const [paginaAtual, setPaginaAtual] = useState(1);
     const itensPorPagina = 10;
-    const [categoriasFiltro, setCategoriasFiltro] = useState("");
+    const [categoriasFiltro, setCategoriasFiltro] = useState([]);
+    const [periodoFiltro, setPeriodoFiltro] = useState({
+        inicio: null,
+        fim: null
+    });
+
+    const aplicarFiltro = (range) => {
+        if (!range?.inicio || !range?.fim) return;
+
+        setDataFiltro(range);
+    };
 
 
     const COLORS = [
@@ -36,16 +48,12 @@ const DashboardFinanceiro = () => {
     ];
 
     useEffect(() => {
-        fetchDados();
-    }, []);
-
-    useEffect(() => {
-        setPaginaAtual(1);
-    }, [dataFiltro, categoriaFiltro]);
-
-    useEffect(() => {
         setPaginaAtual(1);
     }, [dataFiltro, categoriaFiltro, categoriasFiltro]);
+
+    useEffect(() => {
+        fetchDados();
+    }, []);
 
     const fetchDados = async () => {
         try{
@@ -318,22 +326,33 @@ const DashboardFinanceiro = () => {
     );
 
     //Barra de Açoes da aba Transaçoes
-    const BarraAcoes = ({ onCategoria, onFiltrarData, onCriar, onExcluir }) => {
+    const BarraAcoes = ({
+            onCategoria,
+            onFiltrarData,
+            onCriar,
+            onExcluir,
+            categoriaFiltro,
+            setCategoriasFiltro,
+            categoriasFiltro,
+            transacoesFiltradas,
+            totalFiltrado
+
+        }) => {
+
+        const inicioRef = useRef(null);
+        const fimRef = useRef(null);
         return (
             <div className="bg-white  p-4 rounded-2xl shadow border border-slate-100 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
 
+                {/* CALENDÁRIO */}
                 <div className="flex flex-col">
                     <label className="text-sm font-semibold text-slate-700 mb-1">
-                        Filtrar por Data
+                        Periodo
                     </label>
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="date"
-                            value={dataFiltro}
-                            onChange={(e) => onFiltrarData(e.target.value)}
-                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        />
-                    </div>
+                    <DateRangePicker
+                        value={dataFiltro}
+                        onChange={aplicarFiltro}
+                    />
                 </div>
 
                 <div className="flex flex-col">
@@ -423,6 +442,8 @@ const DashboardFinanceiro = () => {
         );
     };
 
+    const BarraAcoesMemo = React.memo(BarraAcoes);
+
     const transacoesFiltradasPorCategoria2 = transacoes.filter(item => {
         if (categoriasFiltro.length === 0) return true;
 
@@ -442,13 +463,19 @@ const DashboardFinanceiro = () => {
         setModalEditarAberto(true);
     };
 
+    const normalizeDate = (date) => {
+        const d = new Date(date);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
     //Filtra as transaçoes pelo dataFiltro
     const transacoesFiltradas = transacoesFiltradasPorCategoria.filter(item => {
         if (!dataFiltro) return true;
 
-        const dataItem = new Date(item.data).toISOString().split("T")[0];
+        const dataItem = normalizeDate(item.data);
+        const inicio = normalizeDate(dataFiltro.inicio);
+        const fim = normalizeDate(dataFiltro.fim);
 
-        return dataItem === dataFiltro;
+        return dataItem >= inicio && dataItem <= fim;
     });
 
     const totalFiltrado = transacoesFiltradas.reduce(
@@ -567,8 +594,6 @@ const DashboardFinanceiro = () => {
             </div>
         </div>
     );
-
-
 
     const ModalEditarTransacao = ({ aberto, onClose, onSalvar, transacao }) => {
         const [form, setForm] = useState(transacao || {});
@@ -1010,11 +1035,16 @@ const DashboardFinanceiro = () => {
                 {aba === 'recomendacoes' && renderRecomendacoes()}
                 {aba === 'transacoes' && (
                     <>
-                    <BarraAcoes
+                    <BarraAcoesMemo
                         onFiltrarData={setDataFiltro}
                         onCategoria={setCategoriaFiltro}
                         onCriar={() => setModalAberto(true)}
                         onExcluir={() => setModalExcluirAberto(true)}
+                        categoriaFiltro={categoriaFiltro}
+                        setCategoriasFiltro={setCategoriasFiltro}
+                        categoriasFiltro={categoriasFiltro}
+                        transacoesFiltradas={transacoesFiltradas}
+                        totalFiltrado={totalFiltrado}
                     />
                     <div className="mt-4">
                         {renderTransacoes()}
