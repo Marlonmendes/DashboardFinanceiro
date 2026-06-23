@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, Plus, UtensilsCrossed,
   Car, Gamepad2, ShoppingBag, HeartPulse, GraduationCap, Home,
   CircleDollarSign, TrendingUp, PieChart, ChevronDown, Check,
 } from "lucide-react";
+
+const API_BASE_URL = (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_URL)
+  || "http://localhost:8080";
 
 const categoriaIcons = {
   ALIMENTACAO: UtensilsCrossed,
@@ -13,10 +16,21 @@ const categoriaIcons = {
   SAUDE: HeartPulse,
   EDUCACAO: GraduationCap,
   MORADIA: Home,
+  UTILIDADES: CircleDollarSign,
+  OUTROS: CircleDollarSign,
+  RECEITA: CircleDollarSign,
 };
 
 const categoriasDisponiveis = [
-  "ALIMENTACAO", "TRANSPORTE", "LAZER", "COMPRAS", "SAUDE", "EDUCACAO", "MORADIA",
+  "ALIMENTACAO",
+  "TRANSPORTE",
+  "LAZER",
+  "COMPRAS",
+  "SAUDE",
+  "EDUCACAO",
+  "MORADIA",
+  "UTILIDADES",
+  "OUTROS",
 ];
 
 const tiposDisponiveis = [
@@ -65,7 +79,7 @@ function WalletSelect({ value, options, onChange, getLabel, getIcon, getColor })
           gap: 10,
           cursor: "pointer",
           boxShadow: isOpen ? "0 0 0 3px rgba(90, 81, 212, 0.22)" : "none",
-          transition: "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
         }}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -155,63 +169,136 @@ function WalletSelect({ value, options, onChange, getLabel, getIcon, getColor })
 }
 
 export default function WalletPage() {
-  const [transacoes, setTransacoes] = useState([
-    { id: 1, descricao: "Mercado", valor: 150.00, categoria: "ALIMENTACAO", recdesp: -1, data: "2026-06-20" },
-    { id: 2, descricao: "Salário", valor: 4200.00, categoria: "OUTROS", recdesp: 1, data: "2026-06-05" },
-    { id: 3, descricao: "Uber", valor: 23.50, categoria: "TRANSPORTE", recdesp: -1, data: "2026-06-18" },
-  ]);
-
+  const [usuarioId] = useState(1);
+  const [dashboard, setDashboard] = useState(null);
+  const [transacoes, setTransacoes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({
     descricao: "",
     valor: "",
     categoria: "ALIMENTACAO",
-    tipo: -1, // 1 = Receita, -1 = Despesa
+    tipo: -1,
     data: new Date().toISOString().slice(0, 10),
   });
 
-  const formatMoeda = (valor) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-      Number.isFinite(valor) ? valor : 0
-    );
+  const fetchDados = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const totalReceitas = transacoes
+      const [dashboardRes, transacoesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/analytics/dashboard/${usuarioId}`),
+        fetch(`${API_BASE_URL}/api/financeiro?usuarioId=${usuarioId}`),
+      ]);
+
+      if (!dashboardRes.ok) {
+        throw new Error(`Falha ao buscar dashboard (status ${dashboardRes.status})`);
+      }
+
+      if (!transacoesRes.ok) {
+        throw new Error(`Falha ao buscar transações (status ${transacoesRes.status})`);
+      }
+
+      const dashboardData = await dashboardRes.json();
+      const transacoesData = await transacoesRes.json();
+      const listaTransacoes = Array.isArray(transacoesData)
+        ? transacoesData
+        : transacoesData?.content ?? [];
+
+      setDashboard(dashboardData);
+      setTransacoes(listaTransacoes);
+    } catch (err) {
+      console.error("Erro ao buscar dados da carteira:", err);
+      setDashboard(null);
+      setTransacoes([]);
+      setError(err.message || "Não foi possível carregar os dados da carteira.");
+    } finally {
+      setLoading(false);
+    }
+  }, [usuarioId]);
+
+  useEffect(() => {
+    fetchDados();
+  }, [fetchDados]);
+
+  const formatMoeda = (valor) => {
+    const numero = Number(valor);
+
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+      Number.isFinite(numero) ? numero : 0
+    );
+  };
+
+  const formatData = (data) => {
+    if (!data) return "-";
+
+    const [ano, mes, dia] = String(data).split("T")[0].split("-");
+    if (!ano || !mes || !dia) return "-";
+
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  const receitasPorTransacao = transacoes
     .filter((t) => t.recdesp === 1)
     .reduce((acc, t) => acc + Number(t.valor || 0), 0);
 
-  const totalDespesas = transacoes
+  const despesasPorTransacao = transacoes
     .filter((t) => t.recdesp === -1)
     .reduce((acc, t) => acc + Number(t.valor || 0), 0);
 
+  const totalReceitas = Number(dashboard?.qtdDinheiroEntrada) || receitasPorTransacao;
+  const totalDespesas = Number(dashboard?.totalMensal) || despesasPorTransacao;
   const saldoAtual = totalReceitas - totalDespesas;
 
   const handleChange = (campo) => (e) => {
     setForm((prev) => ({ ...prev, [campo]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const valorNumerico = Number(form.valor);
     if (!form.descricao.trim() || !valorNumerico || valorNumerico <= 0) return;
 
-    const novaTransacao = {
-      id: Date.now(),
-      descricao: form.descricao.trim(),
-      valor: valorNumerico,
-      categoria: form.categoria,
-      recdesp: Number(form.tipo),
-      data: form.data,
-    };
+    try {
+      setSubmitting(true);
+      setError(null);
 
-    setTransacoes((prev) => [novaTransacao, ...prev]);
+      const response = await fetch(`${API_BASE_URL}/api/financeiro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          descricao: form.descricao.trim(),
+          valor: valorNumerico,
+          categoria: form.categoria,
+          recdesp: Number(form.tipo),
+          necessario: "NAO",
+          data: form.data,
+          usuarioId,
+        }),
+      });
 
-    setForm({
-      descricao: "",
-      valor: "",
-      categoria: "ALIMENTACAO",
-      tipo: -1,
-      data: new Date().toISOString().slice(0, 10),
-    });
+      if (!response.ok) {
+        throw new Error(`Falha ao adicionar transação (status ${response.status})`);
+      }
+
+      setForm({
+        descricao: "",
+        valor: "",
+        categoria: "ALIMENTACAO",
+        tipo: -1,
+        data: new Date().toISOString().slice(0, 10),
+      });
+
+      await fetchDados();
+    } catch (err) {
+      console.error("Erro ao adicionar transação:", err);
+      setError(err.message || "Não foi possível adicionar a transação.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputStyle = {
@@ -244,7 +331,6 @@ export default function WalletPage() {
       minHeight: "100%",
       boxSizing: "border-box",
     }}>
-      {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "#fff" }}>My Wallet</h1>
         <p style={{ margin: "4px 0 0", color: "#6B7DB3", fontSize: 13 }}>
@@ -252,30 +338,27 @@ export default function WalletPage() {
         </p>
       </div>
 
+      {error && (
+        <div style={{
+          background: "#FF47571A",
+          border: "1px solid #FF475755",
+          borderRadius: 12,
+          color: "#FF8A95",
+          fontSize: 13,
+          marginBottom: 16,
+          padding: "12px 14px",
+        }}>
+          {error}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Coluna principal */}
         <div style={{ flex: 1, minWidth: 320, display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* 1. Cards de resumo */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {[
-              {
-                label: "Saldo Atual",
-                value: formatMoeda(saldoAtual),
-                icon: Wallet,
-                iconBg: "#5A51D4",
-              },
-              {
-                label: "Receitas",
-                value: formatMoeda(totalReceitas),
-                icon: ArrowDownLeft,
-                iconBg: "#00C48C",
-              },
-              {
-                label: "Despesas",
-                value: formatMoeda(totalDespesas),
-                icon: ArrowUpRight,
-                iconBg: "#FF4757",
-              },
+              { label: "Saldo Atual", value: formatMoeda(saldoAtual), icon: Wallet, iconBg: "#5A51D4" },
+              { label: "Receitas", value: formatMoeda(totalReceitas), icon: ArrowDownLeft, iconBg: "#00C48C" },
+              { label: "Despesas", value: formatMoeda(totalDespesas), icon: ArrowUpRight, iconBg: "#FF4757" },
             ].map((card) => (
               <div
                 key={card.label}
@@ -300,13 +383,12 @@ export default function WalletPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: "#6B7DB3" }}>{card.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700 }}>{card.value}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>{loading ? "Carregando..." : card.value}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* 2. Formulário Nova Transação */}
           <div style={{
             background: "#141E35", borderRadius: 20, padding: 20,
             border: "1px solid #1E2A4A",
@@ -387,31 +469,31 @@ export default function WalletPage() {
 
                 <button
                   type="submit"
+                  disabled={submitting}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    background: "#5A51D4",
+                    background: submitting ? "#2D3A5C" : "#5A51D4",
                     color: "#fff",
                     border: "none",
                     borderRadius: 10,
                     padding: "10px 20px",
                     fontWeight: 600,
                     fontSize: 13,
-                    cursor: "pointer",
+                    cursor: submitting ? "not-allowed" : "pointer",
                     height: 40,
                     whiteSpace: "nowrap",
                   }}
                 >
                   <Plus size={16} />
-                  Adicionar
+                  {submitting ? "Salvando..." : "Adicionar"}
                 </button>
               </div>
             </form>
           </div>
 
-          {/* 3. Tabela de Histórico */}
           <div style={{
             background: "#141E35", borderRadius: 14, padding: 20,
             border: "1px solid #1E2A4A",
@@ -429,7 +511,13 @@ export default function WalletPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transacoes.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
+                        Carregando transações...
+                      </td>
+                    </tr>
+                  ) : transacoes.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
                         Nenhuma transação registrada.
@@ -458,7 +546,7 @@ export default function WalletPage() {
                           </td>
 
                           <td style={{ padding: "12px 8px", color: "#6B7DB3", fontSize: 12, textAlign: "center" }}>
-                            {tx.data ? new Date(tx.data).toLocaleDateString("pt-BR") : "-"}
+                            {formatData(tx.data)}
                           </td>
 
                           <td style={{ padding: "12px 8px", textAlign: "center" }}>
@@ -494,7 +582,6 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* 4. Área lateral para estatísticas futuras */}
         <div style={{
           width: 320,
           flexShrink: 0,
@@ -517,18 +604,19 @@ export default function WalletPage() {
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Estatísticas</h2>
             </div>
             <div style={{
-              height: 160,
+              minHeight: 160,
               display: "flex",
-              alignItems: "center",
+              flexDirection: "column",
               justifyContent: "center",
+              gap: 10,
               color: "#6B7DB3",
               fontSize: 13,
-              textAlign: "center",
               border: "1px dashed #1E2A4A",
               borderRadius: 12,
               padding: 16,
             }}>
-              Gráficos e indicadores em breve.
+              <span>Maior categoria: <strong style={{ color: "#fff" }}>{dashboard?.maiorCategoria || "-"}</strong></span>
+              <span>Transações: <strong style={{ color: "#fff" }}>{transacoes.length}</strong></span>
             </div>
           </div>
 
@@ -547,18 +635,26 @@ export default function WalletPage() {
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Distribuição</h2>
             </div>
             <div style={{
-              height: 120,
+              minHeight: 120,
               display: "flex",
-              alignItems: "center",
+              flexDirection: "column",
               justifyContent: "center",
+              gap: 8,
               color: "#6B7DB3",
               fontSize: 13,
-              textAlign: "center",
               border: "1px dashed #1E2A4A",
               borderRadius: 12,
               padding: 16,
             }}>
-              Distribuição por categoria em breve.
+              {(dashboard?.porCategoria || []).slice(0, 4).map((item) => (
+                <div key={item.categoria} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span>{item.categoria}</span>
+                  <strong style={{ color: "#64CFF6" }}>{formatMoeda(item.total)}</strong>
+                </div>
+              ))}
+              {(!dashboard?.porCategoria || dashboard.porCategoria.length === 0) && (
+                <span>Distribuição por categoria em breve.</span>
+              )}
             </div>
           </div>
         </div>
