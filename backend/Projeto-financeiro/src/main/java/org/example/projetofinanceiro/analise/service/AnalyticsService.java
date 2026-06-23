@@ -33,7 +33,7 @@ public class AnalyticsService {
         log.info("Gerando dashboard completo para usuário: {}", usuarioId);
 
         LocalDate hoje = LocalDate.now();
-        LocalDate inicioMes = LocalDate.of(hoje.getYear(), hoje.getMonth(), 1);
+        LocalDate inicioMes = LocalDate.of( hoje.getYear(), hoje.getMonth(), 1);
         LocalDate fimMes = hoje;
 
         DashboardDTO dashboardDTO = new DashboardDTO();

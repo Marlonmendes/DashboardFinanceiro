@@ -36,3 +36,21 @@
     transform: rotate(360deg);
   }
 }
+
+.wallet-input:hover,
+.wallet-select:hover {
+  border-color: #2E3C66;
+}
+
+.wallet-input:focus,
+.wallet-select:focus {
+  border-color: #5A51D4 !important;
+  box-shadow: 0 0 0 3px rgba(90, 81, 212, 0.18);
+  background: rgba(26, 35, 64, 1);
+}
+
+.wallet-select {
+  appearance: none;
+  background-color: rgba(26, 35, 64, 0.9);
+  color: #fff;
+}
