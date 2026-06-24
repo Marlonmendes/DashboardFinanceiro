@@ -159,8 +159,9 @@ export default function Dashboard({ isMobile = false }) {
     {
       label: "Total Income",
       value: formatMoeda(totalEntrada),
+
       icon: ArrowDownLeft,
-      iconBg: "#64CFF6",
+      iconBg: "#00C48C",
       positive: true,
     },
     {
@@ -540,7 +541,7 @@ export default function Dashboard({ isMobile = false }) {
                     >
                       <div style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 90px 60px",
+                        gridTemplateColumns: "1fr 90px 30px",
                         alignItems: "center",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -552,12 +553,12 @@ export default function Dashboard({ isMobile = false }) {
                           }}>
                             <Icon size={16} color="#64CFF6" />
                           </div>
-                          <span style={{ color: "#fff", fontWeight: 600 }}>
+                          <span style={{ color: "#fff", fontWeight: 600}}>
                             {categoria.categoria}
                           </span>
                         </div>
 
-                        <span style={{ color: isReceita ? "#00C48C" : "#FF4757", fontWeight: 600, textAlign: "right" }}>
+                        <span style={{ color: isReceita ? "#00C48C" : "#FF4757", fontWeight: 600, textAlign: "left" }}>
                           {formatMoeda(categoria.total)}
                         </span>
 

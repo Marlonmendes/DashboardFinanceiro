@@ -461,7 +461,7 @@ export default function WalletPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: "#6B7DB3" }}>{card.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700 }}>{loading ? "Carregando..." : card.value}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: card.iconBg }}>{loading ? "Carregando..." : card.value}</div>
                 </div>
               </div>
             ))}
@@ -655,14 +655,42 @@ export default function WalletPage() {
                 <thead>
                   <tr style={{ color: "#6B7DB3", fontSize: 12 }}>
                     <th style={{ width: 36, textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>
+                        <label
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            border: allSelected
+                              ? "1px solid #5A51D4"
+                              : "1px solid #2D3A5C",
+                            background: allSelected
+                              ? "#5A51D4"
+                              : "#1A2340",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "all .2s ease",
+                            boxShadow: allSelected
+                              ? "0 0 12px rgba(90,81,212,.4)"
+                              : "none",
+                          }}
+                        >
                       <input
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleSelectAll}
                         disabled={loading || transacoes.length === 0}
                         aria-label="Selecionar todas as transações"
-                        style={{ cursor: loading || transacoes.length === 0 ? "not-allowed" : "pointer" }}
-                      />
+                        style={{ cursor: loading || transacoes.length === 0 ? "not-allowed" : "pointer", display: "none" }}
+                      />  {allSelected && (
+                             <Check
+                               size={13}
+                               color="#fff"
+                               strokeWidth={3}
+                             />
+                           )}
+                         </label>
                     </th>
                     <th style={{ textAlign: "left", padding: "6px 8px", fontWeight: 500 }}>Descrição</th>
                     <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>Data</th>
@@ -699,13 +727,41 @@ export default function WalletPage() {
                           }}
                         >
                           <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                            <label
+                              style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: "50%",
+                                border: isSelected
+                                  ? "1px solid #5A51D4"
+                                  : "1px solid #2D3A5C",
+                                background: isSelected
+                                  ? "#5A51D4"
+                                  : "#1A2340",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                transition: "all .2s ease",
+                                boxShadow: isSelected
+                                  ? "0 0 12px rgba(90,81,212,.4)"
+                                  : "none",
+                              }}
+                            >
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSelectOne(tx.id)}
                               aria-label={`Selecionar transação ${tx.descricao || tx.id}`}
-                              style={{ cursor: "pointer" }}
-                            />
+                              style={{ cursor: "pointer", display: "none" }}
+                            /> {isSelected && (
+                                <Check
+                                  size={13}
+                                  color="#fff"
+                                  strokeWidth={3}
+                                />
+                              )}
+                            </label>
                           </td>
                           <td style={{ padding: "12px 8px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
