@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Wallet, ArrowDownLeft, ArrowUpRight, Plus, UtensilsCrossed,
+  Wallet, ArrowDownLeft, ArrowUpRight, Plus, Trash2, Pencil, X, UtensilsCrossed,
   Car, Gamepad2, ShoppingBag, HeartPulse, GraduationCap, Home,
   CircleDollarSign, TrendingUp, PieChart, ChevronDown, Check,
 } from "lucide-react";
@@ -174,7 +174,10 @@ export default function WalletPage() {
   const [transacoes, setTransacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     descricao: "",
     valor: "",
@@ -209,6 +212,9 @@ export default function WalletPage() {
 
       setDashboard(dashboardData);
       setTransacoes(listaTransacoes);
+      setSelectedIds((currentIds) =>
+        currentIds.filter((id) => listaTransacoes.some((tx) => tx.id === id))
+      );
     } catch (err) {
       console.error("Erro ao buscar dados da carteira:", err);
       setDashboard(null);
@@ -251,6 +257,8 @@ export default function WalletPage() {
   const totalReceitas = Number(dashboard?.qtdDinheiroEntrada) || receitasPorTransacao;
   const totalDespesas = Number(dashboard?.totalMensal) || despesasPorTransacao;
   const saldoAtual = totalReceitas - totalDespesas;
+  const allSelected = transacoes.length > 0 && selectedIds.length === transacoes.length;
+  const isEditing = editingId !== null;
 
   const handleChange = (campo) => (e) => {
     setForm((prev) => ({ ...prev, [campo]: e.target.value }));
@@ -265,15 +273,19 @@ export default function WalletPage() {
     try {
       setSubmitting(true);
       setError(null);
-
-      const response = await fetch(`${API_BASE_URL}/api/financeiro`, {
-        method: "POST",
+        console.log(Number(form.tipo));
+      const response = await fetch(
+        isEditing
+          ? `${API_BASE_URL}/api/financeiro/${editingId}`
+          : `${API_BASE_URL}/api/financeiro`,
+        {
+        method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           descricao: form.descricao.trim(),
           valor: valorNumerico,
           categoria: form.categoria,
-          recdesp: Number(form.tipo),
+          recdesp: Number(form.tipo), //não importa o que eu faça fica sempre 1
           necessario: "NAO",
           data: form.data,
           usuarioId,
@@ -281,7 +293,7 @@ export default function WalletPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Falha ao adicionar transação (status ${response.status})`);
+        throw new Error(`Falha ao ${isEditing ? "atualizar" : "adicionar"} transação (status ${response.status})`);
       }
 
       setForm({
@@ -291,6 +303,7 @@ export default function WalletPage() {
         tipo: -1,
         data: new Date().toISOString().slice(0, 10),
       });
+      setEditingId(null);
 
       await fetchDados();
     } catch (err) {
@@ -298,6 +311,71 @@ export default function WalletPage() {
       setError(err.message || "Não foi possível adicionar a transação.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      descricao: "",
+      valor: "",
+      categoria: "ALIMENTACAO",
+      tipo: -1,
+      data: new Date().toISOString().slice(0, 10),
+    });
+    setEditingId(null);
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : transacoes.map((tx) => tx.id));
+  };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((currentIds) =>
+      currentIds.includes(id)
+        ? currentIds.filter((selectedId) => selectedId !== id)
+        : [...currentIds, id]
+    );
+  };
+
+  const handleEdit = (tx) => {
+    setEditingId(tx.id);
+    setForm({
+      descricao: tx.descricao || "",
+      valor: String(tx.valor ?? ""),
+      categoria: tx.categoria || "ALIMENTACAO",
+      tipo: Number(tx.recdesp) || -1,
+      data: String(tx.data || "").split("T")[0] || new Date().toISOString().slice(0, 10),
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      const response = await fetch(`${API_BASE_URL}/api/financeiro/lote`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selectedIds),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Falha ao excluir transações (status ${response.status})`);
+      }
+
+      if (selectedIds.includes(editingId)) {
+        resetForm();
+      }
+
+      setSelectedIds([]);
+      await fetchDados();
+    } catch (err) {
+      console.error("Erro ao excluir transações:", err);
+      setError(err.message || "Não foi possível excluir as transações selecionadas.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -393,7 +471,39 @@ export default function WalletPage() {
             background: "#141E35", borderRadius: 20, padding: 20,
             border: "1px solid #1E2A4A",
           }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>Nova Transação</h2>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 16,
+            }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                {isEditing ? "Editar Transação" : "Nova Transação"}
+              </h2>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#1A2340",
+                    border: "1px solid #2D3A5C",
+                    borderRadius: 8,
+                    color: "#B8C4EA",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "8px 10px",
+                  }}
+                >
+                  <X size={14} />
+                  Cancelar
+                </button>
+              )}
+            </div>
 
             <form onSubmit={handleSubmit}>
               <div style={{
@@ -460,7 +570,9 @@ export default function WalletPage() {
                   <WalletSelect
                     value={form.tipo}
                     options={tiposDisponiveis}
-                    onChange={(tipo) => setForm((prev) => ({ ...prev, tipo }))}
+                    onChange={(tipo) => {
+                        console.log(tipo);
+                        setForm((prev) => ({ ...prev, tipo }))}}
                     getLabel={(option) => option.label}
                     getIcon={(option) => option.icon}
                     getColor={(option) => option.color}
@@ -488,7 +600,7 @@ export default function WalletPage() {
                   }}
                 >
                   <Plus size={16} />
-                  {submitting ? "Salvando..." : "Adicionar"}
+                  {submitting ? "Salvando..." : isEditing ? "Atualizar" : "Adicionar"}
                 </button>
               </div>
             </form>
@@ -498,28 +610,77 @@ export default function WalletPage() {
             background: "#141E35", borderRadius: 14, padding: 20,
             border: "1px solid #1E2A4A",
           }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>Histórico</h2>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 16,
+              flexWrap: "wrap",
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Histórico</h2>
+                <div style={{ color: "#6B7DB3", fontSize: 12, marginTop: 4 }}>
+                  {selectedIds.length} selecionada{selectedIds.length === 1 ? "" : "s"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                disabled={selectedIds.length === 0 || deleting}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: selectedIds.length === 0 || deleting ? "#2D3A5C" : "#FF4757",
+                  border: "none",
+                  borderRadius: 10,
+                  color: "#fff",
+                  cursor: selectedIds.length === 0 || deleting ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  height: 38,
+                  padding: "0 14px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Trash2 size={15} />
+                {deleting ? "Excluindo..." : "Excluir selecionadas"}
+              </button>
+            </div>
 
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ color: "#6B7DB3", fontSize: 12 }}>
+                    <th style={{ width: 36, textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        disabled={loading || transacoes.length === 0}
+                        aria-label="Selecionar todas as transações"
+                        style={{ cursor: loading || transacoes.length === 0 ? "not-allowed" : "pointer" }}
+                      />
+                    </th>
                     <th style={{ textAlign: "left", padding: "6px 8px", fontWeight: 500 }}>Descrição</th>
                     <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>Data</th>
                     <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>Categoria</th>
                     <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>Valor</th>
+                    <th style={{ textAlign: "center", padding: "6px 8px", fontWeight: 500 }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
+                      <td colSpan={6} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
                         Carregando transações...
                       </td>
                     </tr>
                   ) : transacoes.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
+                      <td colSpan={6} style={{ padding: "20px 8px", textAlign: "center", color: "#6B7DB3" }}>
                         Nenhuma transação registrada.
                       </td>
                     </tr>
@@ -527,9 +688,25 @@ export default function WalletPage() {
                     transacoes.map((tx) => {
                       const isReceita = tx.recdesp === 1;
                       const Icon = categoriaIcons[tx.categoria] || CircleDollarSign;
+                      const isSelected = selectedIds.includes(tx.id);
 
                       return (
-                        <tr key={tx.id} style={{ borderTop: "1px solid #1E2A4A" }}>
+                        <tr
+                          key={tx.id}
+                          style={{
+                            borderTop: "1px solid #1E2A4A",
+                            background: isSelected ? "#1A234066" : "transparent",
+                          }}
+                        >
+                          <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectOne(tx.id)}
+                              aria-label={`Selecionar transação ${tx.descricao || tx.id}`}
+                              style={{ cursor: "pointer" }}
+                            />
+                          </td>
                           <td style={{ padding: "12px 8px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{
@@ -571,6 +748,31 @@ export default function WalletPage() {
                             color: isReceita ? "#00C48C" : "#FF4757",
                           }}>
                             {isReceita ? "+" : "-"}{formatMoeda(Math.abs(Number(tx.valor) || 0))}
+                          </td>
+
+                          <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(tx)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                                background: editingId === tx.id ? "#5A51D4" : "#1A2340",
+                                border: "1px solid #2D3A5C",
+                                borderRadius: 8,
+                                color: "#fff",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                padding: "8px 10px",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <Pencil size={14} />
+                              Editar
+                            </button>
                           </td>
                         </tr>
                       );

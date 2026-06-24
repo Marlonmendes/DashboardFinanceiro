@@ -113,6 +113,7 @@ public class FinanceiroService {
         financeiro.setDescricao(dto.getDescricao());
         financeiro.setValor(dto.getValor());
         financeiro.setCategoria(dto.getCategoria());
+        financeiro.setRecdesp(dto.getRecdesp());
         financeiro.setData(dto.getData().atStartOfDay());
         financeiro.setNecessario(dto.getNecessario());
 
