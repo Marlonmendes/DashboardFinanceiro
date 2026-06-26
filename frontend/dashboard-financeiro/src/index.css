@@ -35,3 +35,22 @@ body {
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.15);
 }
+
+/* Scrollbar global (dark theme) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121B31;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2D3A5C;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5A51D4;
+}

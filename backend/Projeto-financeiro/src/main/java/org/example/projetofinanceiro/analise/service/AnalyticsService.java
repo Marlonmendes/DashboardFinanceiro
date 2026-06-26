@@ -3,14 +3,17 @@ package org.example.projetofinanceiro.analise.service;
 import lombok.extern.slf4j.Slf4j;
 import org.example.projetofinanceiro.analise.AnalyticsRepository;
 import org.example.projetofinanceiro.analise.dto.*;
+import org.example.projetofinanceiro.analise.dto.summary.AnalyticsSummary;
+import org.example.projetofinanceiro.analise.dto.summary.MonthSummaryDTO;
+import org.example.projetofinanceiro.financeiro.FinanceiroRepository;
 import org.example.projetofinanceiro.usuario.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -25,6 +28,9 @@ public class AnalyticsService {
 
     @Autowired
     private AnalyticsRepository analyticsRepository;
+
+    @Autowired
+    private FinanceiroRepository financeiroRepository;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -291,6 +297,39 @@ public class AnalyticsService {
         score.setScoreMetas(80);
 
         return score;
+    }
+
+    public AnalyticsSummary getSummaryData(Long usuarioId){
+        log.info("Realizando a busca dos dados do summary Analytics");
+        AnalyticsSummary analyticsSummary = new AnalyticsSummary();
+        MonthSummaryDTO summaryDTO = new MonthSummaryDTO();
+        summaryDTO.setHighestExpense(analyticsRepository.getHighestExpense(usuarioId));
+        summaryDTO.setDailyAverageExpense(analyticsRepository.getDailyAverageExpense(usuarioId));
+
+        List<Object[]> queryDate = analyticsRepository.getMostExpensiveDay(usuarioId);
+
+        if (!queryDate.isEmpty() && queryDate.get(0)[0] != null) {
+            Object dateValue = queryDate.get(0)[0];
+            Date date;
+
+            if (dateValue instanceof Date) {
+                date = (Date) dateValue;
+            } else if (dateValue instanceof LocalDate) {
+                date = Date.valueOf((LocalDate) dateValue);
+            } else if (dateValue instanceof java.util.Date) {
+                date = new Date(((java.util.Date) dateValue).getTime());
+            } else {
+                date = Date.valueOf(dateValue.toString());
+            }
+
+            summaryDTO.setMostExpensiveDay(date);
+        }
+
+        summaryDTO.setLongestNoSpendStreak(analyticsRepository.getLongestNoSpendStreak(usuarioId));
+        System.out.println(summaryDTO);
+        analyticsSummary.setMonthSummary(summaryDTO);
+
+        return analyticsSummary;
     }
 
     private String getNivelScore(int score) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/SideBar';
 import DashboardFinanceiro from './components/DashboardFinanceiro';
 import WalletPage from './components/WalletPage';
+import AnalyticsPage from './components/AnalyticsPage'
 import './App.css';
 
 function App() {
@@ -26,6 +27,8 @@ function App() {
     switch (activePage) {
       case 'wallet':
         return <WalletPage isMobile={isMobile} />;
+      case 'analytics':
+        return <AnalyticsPage isMobile={isMobile} />;
       case 'dashboard':
       default:
         return <DashboardFinanceiro isMobile={isMobile} />;

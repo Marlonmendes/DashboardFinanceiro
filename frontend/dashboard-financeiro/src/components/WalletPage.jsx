@@ -112,7 +112,7 @@ function WalletSelect({ value, options, onChange, getLabel, getIcon, getColor })
             zIndex: 30,
             background: "#121B31",
             border: "1px solid #26365F",
-            borderRadius: 12,
+            borderRadius: 4,
             padding: 6,
             boxShadow: "0 18px 40px rgba(4, 8, 20, 0.48)",
             maxHeight: 230,
@@ -847,37 +847,6 @@ export default function WalletPage() {
           flexDirection: "column",
           gap: 20,
         }}>
-          <div style={{
-            background: "#141E35", borderRadius: 20, padding: 20,
-            border: "1px solid #1E2A4A",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: "#5A51D422",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <TrendingUp size={18} color="#5A51D4" />
-              </div>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Estatísticas</h2>
-            </div>
-            <div style={{
-              minHeight: 160,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 10,
-              color: "#6B7DB3",
-              fontSize: 13,
-              border: "1px dashed #1E2A4A",
-              borderRadius: 12,
-              padding: 16,
-            }}>
-              <span>Maior categoria: <strong style={{ color: "#fff" }}>{dashboard?.maiorCategoria || "-"}</strong></span>
-              <span>Transações: <strong style={{ color: "#fff" }}>{transacoes.length}</strong></span>
-            </div>
-          </div>
-
           <div style={{
             background: "#141E35", borderRadius: 20, padding: 20,
             border: "1px solid #1E2A4A",

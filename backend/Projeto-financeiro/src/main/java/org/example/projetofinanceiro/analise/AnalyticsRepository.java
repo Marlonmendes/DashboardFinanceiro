@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 
 public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
@@ -378,5 +379,80 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
             @Param("usuarioId") Long usuarioId,
             @Param("dataInicio") LocalDate dataInicio,
             @Param("dataFim") LocalDate dataFim
+    );
+
+    /**
+     * Transação mais alta
+     */
+    @Query(value = """
+        SELECT MAX(valor) AS highestExpense
+        FROM Financeiro
+        WHERE usuario_id = :usuarioId
+        AND recdesp = -1
+    """, nativeQuery = true)
+    BigDecimal getHighestExpense(
+            @Param("usuarioId") Long usuarioId
+    );
+
+    /**
+     * Media gasta por dia no mês
+     */
+    @Query(value = """
+        SELECT
+        ROUND(SUM(valor) / EXTRACT(DAY FROM CURRENT_DATE),2) AS daily_average_expense
+        FROM financeiro
+        WHERE usuario_id = :usuarioId
+        AND recdesp = -1
+        AND data >= date_trunc('month', CURRENT_DATE)
+        AND data <= CURRENT_DATE;
+    """, nativeQuery = true)
+    BigDecimal getDailyAverageExpense(
+            @Param("usuarioId") Long usuarioId
+    );
+
+    /**
+     * Dia que mais gastou
+     */
+    @Query(value = """
+        SELECT
+        DATE(data) AS most_expensive_day,
+        SUM(valor) AS total_spent
+        FROM financeiro
+        WHERE usuario_id = :usuarioId
+        AND recdesp = -1
+        AND data >= date_trunc('month', CURRENT_DATE)
+        AND data <= CURRENT_DATE
+        GROUP BY DATE(data)
+        ORDER BY total_spent DESC
+        LIMIT 1;
+    """, nativeQuery = true)
+    List<Object[]> getMostExpensiveDay(
+            @Param("usuarioId") Long usuarioId
+    );
+
+    /**
+     * Streak sem gastos
+     */
+    @Query(value = """
+        WITH dias_sem_gasto AS (
+        SELECT d::date AS dia
+        FROM generate_series(
+        date_trunc('month', CURRENT_DATE),
+        CURRENT_DATE,
+        interval '1 day'
+        ) d
+        WHERE NOT EXISTS (
+        SELECT 1
+        FROM financeiro f
+        WHERE f.usuario_id = :usuarioId
+          AND f.recdesp = -1
+          AND DATE(f.data) = d::date
+        )
+        )
+        SELECT COUNT(*) AS streak
+        FROM dias_sem_gasto;
+    """, nativeQuery = true)
+    BigDecimal getLongestNoSpendStreak(
+            @Param("usuarioId") Long usuarioId
     );
 }

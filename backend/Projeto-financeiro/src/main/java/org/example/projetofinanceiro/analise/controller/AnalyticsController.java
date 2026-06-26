@@ -1,12 +1,11 @@
 package org.example.projetofinanceiro.analise.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.Response;
-import org.example.projetofinanceiro.analise.AnalyticsRepository;
 import org.example.projetofinanceiro.analise.dto.*;
+import org.example.projetofinanceiro.analise.dto.summary.AnalyticsSummary;
+import org.example.projetofinanceiro.analise.dto.summary.MonthSummaryDTO;
 import org.example.projetofinanceiro.analise.service.AnalyticsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +22,14 @@ public class AnalyticsController {
 
     @Autowired
     private AnalyticsService analyticsService;
+
+    @GetMapping("/summary/{usuarioId}")
+    public ResponseEntity<AnalyticsSummary> getSummary(@PathVariable Long usuarioId){
+        log.info("Requisição de summary para usuario: {}", usuarioId);
+        AnalyticsSummary analyticsSummary = analyticsService.getSummaryData(usuarioId);
+        return ResponseEntity.ok(analyticsSummary);
+    }
+
 
     @GetMapping("/dashboard/{usuarioId}")
     public ResponseEntity<DashboardDTO> getDashboardCompleto(@PathVariable Long usuarioId){

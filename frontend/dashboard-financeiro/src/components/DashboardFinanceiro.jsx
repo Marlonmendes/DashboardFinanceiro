@@ -159,7 +159,6 @@ export default function Dashboard({ isMobile = false }) {
     {
       label: "Total Income",
       value: formatMoeda(totalEntrada),
-
       icon: ArrowDownLeft,
       iconBg: "#00C48C",
       positive: true,
@@ -264,7 +263,7 @@ export default function Dashboard({ isMobile = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {loading
                       ? <span style={{ fontSize: 20, fontWeight: 700, color: "#6B7DB3" }}>...</span>
-                      : <span style={{ fontSize: 20, fontWeight: 700 }}>{card.value}</span>}
+                      : <span style={{ fontSize: 20, fontWeight: 700, color: card.iconBg }}>{card.value}</span>}
                   </div>
                 </div>
               </div>
@@ -452,7 +451,7 @@ export default function Dashboard({ isMobile = false }) {
           }}>
             <div style={{ color: "#fff", fontSize: 24, fontWeight: 600, marginBottom: 12 }}>My Card</div>
             <div style={{ color: "#8C89B4", fontSize: 14 }}>Card Balance</div>
-            <div style={{ color: "white", fontSize: 24, fontWeight: 600, marginBottom: 24 }}>
+            <div style={{ color: saldoAtual >= 0 ? "#00C48C" : "FF4757", fontSize: 24, fontWeight: 600, marginBottom: 24 }}>
               {formatMoeda(saldoAtual)}
             </div>
 
