@@ -324,8 +324,14 @@ public class AnalyticsService {
 
             summaryDTO.setMostExpensiveDay(date);
         }
+        LocalDate hoje = LocalDate.now();
+        LocalDate inicioMes = LocalDate.of( hoje.getYear(), hoje.getMonth(), 1);
+        LocalDate fimMes = hoje;
 
         summaryDTO.setLongestNoSpendStreak(analyticsRepository.getLongestNoSpendStreak(usuarioId));
+        summaryDTO.setTopCategory(analyticsRepository.getMaiorCategoria(usuarioId, inicioMes, fimMes));
+        summaryDTO.setVariationLastMonth(analyticsRepository.getVariationLastMonth(usuarioId));
+        summaryDTO.setTotalTransactions(analyticsRepository.getTotalTransactions(usuarioId));
         System.out.println(summaryDTO);
         analyticsSummary.setMonthSummary(summaryDTO);
 

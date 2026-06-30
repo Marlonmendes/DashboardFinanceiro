@@ -17,6 +17,6 @@ public class MonthSummaryDTO {
     private BigDecimal longestNoSpendStreak;
     private BigDecimal weeklyBudget;
     private String topCategory;
-    private BigDecimal variationLastMonth;
+    private String variationLastMonth;
     private BigDecimal totalTransactions;
 }

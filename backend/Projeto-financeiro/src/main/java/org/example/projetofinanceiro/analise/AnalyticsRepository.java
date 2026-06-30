@@ -366,22 +366,6 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
     );
 
     /**
-     * Quantidade de dias sem gastos
-     */
-    @Query(value = """
-        SELECT COUNT(DISTINCT DATE(f.data))
-        FROM Financeiro f
-        WHERE f.usuario_id = :usuarioId
-        AND f.data >= :dataInicio
-        AND f.data <= :dataFim
-    """, nativeQuery = true)
-    Long getDiasComGastos(
-            @Param("usuarioId") Long usuarioId,
-            @Param("dataInicio") LocalDate dataInicio,
-            @Param("dataFim") LocalDate dataFim
-    );
-
-    /**
      * Transação mais alta
      */
     @Query(value = """
@@ -453,6 +437,60 @@ public interface AnalyticsRepository extends JpaRepository<Financeiro, Long> {
         FROM dias_sem_gasto;
     """, nativeQuery = true)
     BigDecimal getLongestNoSpendStreak(
+            @Param("usuarioId") Long usuarioId
+    );
+
+    @Query(value = """
+    SELECT
+        categoria,
+        SUM(valor) AS total_gasto
+    FROM financeiro
+    WHERE recdesp = -1
+      AND data >= :data_inicio
+      AND data < (:data_fim::date + INTERVAL '1 day')
+      AND usuario_id = :usuarioId
+    GROUP BY categoria
+    ORDER BY total_gasto DESC
+    LIMIT 1
+    """, nativeQuery = true)
+    String getTopCategory(
+            @Param("usuarioId") Long usuarioId,
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim
+    );
+
+    @Query(value = """
+    WITH gastos AS (
+        SELECT
+            COALESCE(SUM(valor) FILTER (
+                WHERE data >= date_trunc('month', CURRENT_DATE)
+                  AND data < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+            ), 0) AS gasto_mes_atual,
+            COALESCE(SUM(valor) FILTER (
+                WHERE data >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+                  AND data < date_trunc('month', CURRENT_DATE)
+            ), 0) AS gasto_mes_passado
+        FROM financeiro
+        WHERE recdesp = -1
+        AND usuario_id = :usuarioId
+    )
+    SELECT
+        CASE
+            WHEN gasto_mes_passado = 0 THEN 'N/A'
+            ELSE ROUND(((gasto_mes_atual - gasto_mes_passado) / gasto_mes_passado) * 100, 2)::text
+        END AS variacao_percentual
+    FROM gastos
+    """, nativeQuery = true)
+    String getVariationLastMonth(
+            @Param("usuarioId") Long usuarioId
+    );
+
+    @Query(value = """
+    SELECT COUNT(*) as totalTransacao
+    FROM Financeiro
+    WHERE usuario_id = :usuarioId
+    """, nativeQuery = true)
+    BigDecimal getTotalTransactions(
             @Param("usuarioId") Long usuarioId
     );
 }
